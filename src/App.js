@@ -24,7 +24,9 @@ const App = () => {
           let scoreData = toScoreData(scores)
           setScoreData(scoreData);
         }} />
+      <h2>Symbols By Market Value</h2>
       <Pie data={positionData} />
+      <h2>Scores By Cost Base</h2>
       <Pie data={scoreData} />
     </div>
   )
@@ -108,11 +110,11 @@ const toScoreData = (scores) => {
   for (let score in scores) {
     values.push(scores[score])
   }
-  let sum = values.map(v => v.marketValue).reduce((a, b) => a + b, 0);
+  let sum = values.map(v => v.costBase).reduce((a, b) => a + b, 0);
   return {
     labels: values.map(v => Array.from(v.symbol).join(',')),
     datasets: [{
-      data: values.map(v => Math.round(v.marketValue / sum * 100)),
+      data: values.map(v => Math.round(v.costBase / sum * 100)),
       backgroundColor: pieColors(values.length, 0.2),
       borderColor: pieColors(values.length, 1.0),
       borderWidth: 1,
