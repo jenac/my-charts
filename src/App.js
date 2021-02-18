@@ -4,14 +4,11 @@ import { Pie } from '@reactchartjs/react-chart.js';
 
 
 const App = () => {
-  const [data, setData] = useState({});
+  const [positionData, setPositionData] = useState({});
+  const [scoreData, setScoreData] = useState({});
 
   useEffect(() => {
     console.log('trigger use effect hook');
-
-    // setTimeout(() => {
-    //   setMessage("I'm fine, thanks for asking.");
-    // }, 1000)
   })
 
   return (
@@ -20,24 +17,30 @@ const App = () => {
         (data, _) => {
           let transactions = getTransactions(data);
           let positions = toPositions(transactions);
-          let pieData = toPieData(positions);
-          setData(pieData);
+          let positionData = toPositionData(positions);
+          setPositionData(positionData);
+
+          let scores = toScores(transactions);
+          let scoreData = toScoreData(scores)
+          setScoreData(scoreData);
         }} />
-      <Pie data={data} />
+      <Pie data={positionData} />
+      <Pie data={scoreData} />
     </div>
   )
 }
 
 const getTransactions = (csvData) => (
-  csvData.filter(r => r[9] && r[9] != "Trade Date")
+  csvData.filter(r => r[9] && r[9] !== "Trade Date")
     .map(r => (
       {
         "symbol": r[0].trim(),
-        "price": parseFloat(r[1]),
+        "price": parseFloat(r[1]).toFixed(2),
         "date": r[2],
         "tradeDate": r[9],
-        "purchasePrice": parseFloat(r[10]),
-        "quantity": parseInt(r[11])
+        "purchasePrice": parseFloat(r[10]).toFixed(2),
+        "quantity": parseInt(r[11]),
+        "score": parseFloat(r[13]).toFixed(2)
       }))
 )
 
@@ -63,7 +66,28 @@ const toPositions = (transactions) => {
   return positions;
 };
 
-const toPieData = (positions) => {
+const toScores = (transactions) => {
+  let scores = new Map();
+  transactions.forEach(t => {
+    let score = t.score;
+
+    let cur = scores[score];
+    if (!cur) {
+      cur = {
+        symbol: new Set(),
+        costBase: 0.0,
+        marketValue: 0.0,
+      };
+    }
+    cur.symbol.add(t.symbol);
+    cur.costBase = cur.costBase + (t.quantity * t.purchasePrice);
+    cur.marketValue = cur.marketValue + (t.quantity * t.price);
+    scores[score] = cur;
+  });
+  return scores;
+};
+
+const toPositionData = (positions) => {
   let values = [];
   for (let symbol in positions) {
     values.push(positions[symbol])
@@ -72,6 +96,23 @@ const toPieData = (positions) => {
     labels: values.map(v => v.symbol),
     datasets: [{
       data: values.map(v => v.marketValue),
+      backgroundColor: pieColors(values.length, 0.2),
+      borderColor: pieColors(values.length, 1.0),
+      borderWidth: 1,
+    }]
+  };
+}
+
+const toScoreData = (scores) => {
+  let values = [];
+  for (let score in scores) {
+    values.push(scores[score])
+  }
+  let sum = values.map(v => v.marketValue).reduce((a, b) => a + b, 0);
+  return {
+    labels: values.map(v => Array.from(v.symbol).join(',')),
+    datasets: [{
+      data: values.map(v => Math.round(v.marketValue / sum * 100)),
       backgroundColor: pieColors(values.length, 0.2),
       borderColor: pieColors(values.length, 1.0),
       borderWidth: 1,
